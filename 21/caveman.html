@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Caveman Arena</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="icon" type="image/x-icon" href="images/logo.png">
+  <link rel="preload" href="ui-click.mp3" as="audio">
+  <script src="script.js" defer></script>
+  <style>
+    :root{
+      --hud-bg: rgba(0,0,0,.55);
+      --panel-bg: rgba(0,0,0,.45);
+      --edge: rgba(255,255,255,.08);
+      --gold: #f3c86a;
+      --stone:#d8d4cc;
+      --stone-edge:#3a3935;
+    }
+    html,body{height:100%}
+    body{
+      margin:0; color:#fff; font:600 16px/1.35 system-ui,-apple-system,Segoe UI,Roboto;
+      background:url("images/caveman.png") center/cover no-repeat fixed;
+    }
+
+    /* Top-left chips HUD */
+    .chipHud{
+      position:fixed; top:14px; left:14px; z-index:5;
+      display:flex; align-items:center; gap:10px;
+      background:var(--hud-bg); border:1px solid var(--edge); border-radius:14px;
+      padding:8px 12px; backdrop-filter: blur(4px);
+    }
+    .chipHud img{width:26px;height:26px;object-fit:contain; filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))}
+    .chipHud .amt{font-weight:900; letter-spacing:.3px}
+    .goal{font-size:12px; color:#e6e6e6; opacity:.85}
+
+    /* Controls panel (bottom center) */
+    .controls{
+      position:fixed; left:50%; bottom:18px; transform:translateX(-50%);
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+      background:var(--panel-bg); border:1px solid var(--edge); border-radius:14px; padding:10px 12px;
+    }
+    .controls input[type=number]{
+      width:80px; padding:.45rem .55rem; border-radius:10px; border:1px solid #444;
+      background:#111; color:#fff; font-weight:700; text-align:center;
+    }
+    button{
+      background:linear-gradient(180deg,#3a2f22,#2a241b); color:#fff; border:1px solid #5a4a33;
+      padding:.55rem .9rem; border-radius:12px; cursor:pointer; font-weight:800; letter-spacing:.3px;
+    }
+    button.primary{background:linear-gradient(180deg,#e7b34c,#c18a2a); color:#1b1409; border-color:#f0ca7b}
+    button:disabled{opacity:.45; cursor:not-allowed}
+
+    /* Stone table card layout areas */
+    .table{
+      position:absolute; inset:0; display:grid; place-items:center;
+      padding:20px;
+    }
+    /* Position rows to match background perspective */
+    .row{position:absolute; left:50%; transform:translateX(-50%); display:flex; gap:10px}
+    .dealerRow{top:18%;}     /* near the caveman */
+    .playerRow{bottom:22%;}  /* near the foreground hands */
+
+    /* Cards (primitive ‘stone tablet’ style) */
+    .card{
+      width:74px; height:104px; border-radius:8px;
+      background:var(--stone);
+      border:3px solid var(--stone-edge);
+      display:grid; place-items:center; color:#111; font-weight:900; font-size:22px;
+      box-shadow:0 10px 18px rgba(0,0,0,.45), inset 0 2px 0 rgba(255,255,255,.3);
+      position:relative;
+    }
+
+    .cards {
+    display: flex;
+    flex-direction: row;    /* force horizontal row */
+    align-items: center;
+    gap: 10px;              /* spacing between cards */
+  }
+
+    .card.back{
+      background:repeating-linear-gradient(45deg,#21252a 0 9px,#121519 9px 18px);
+      border-color:#0f1216;
+      color:transparent;
+    }
+    .badge{
+      position:absolute; top:-26px; left:50%; transform:translateX(-50%);
+      font-size:14px; background:var(--hud-bg); border:1px solid var(--edge); padding:4px 8px; border-radius:10px;
+    }
+
+    /* Center messages */
+    .toast{
+      position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+      background:var(--panel-bg); border:1px solid var(--edge); padding:14px 18px; border-radius:14px;
+      display:none; text-align:center;
+    }
+    .toast.show{display:block}
+    .toast h2{margin:.1rem 0 .35rem; color:var(--gold)}
+
+    .row {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: row; /* ensure horizontal */
+      align-items: center;
+      gap: 10px;
+    }
+    .dealerRow { top: 18%; }
+    .playerRow { bottom: 22%; }
+
+    /* Score indicator */
+    .score {
+      font-size: 18px;
+      font-weight: bold;
+      background: rgba(0,0,0,.6);
+      border: 1px solid rgba(255,255,255,.2);
+      padding: 4px 8px;
+      border-radius: 8px;
+      margin-left: 10px;
+    }
+
+    .backBtn {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 14px;
+      padding: 8px 12px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      z-index: 9999;   /* ✅ ensures it stays on top */
+      }
+      
+      .backBtn img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      }
+
+      .backBtn:hover {
+      background: rgba(0,0,0,.75);
+      }
+  </style>
+</head>
+<body>
+      
+<!-- HUD -->
+<div class="chipHud" id="chipHud">
+  <img id="chipIcon" alt="" />
+  <div>
+    <div class="amt">Rocks: <span id="chips">250</span></div>
+    <div class="goal">Goal: reach 1000 to unlock next arena</div>
+  </div>
+</div>
+
+<a href="campaign.html" class="backBtn">
+    <img src="images/back-icon.png" alt="Menu" />
+    Back to Menu
+</a>
+
+<!-- Cards on table -->
+<div class="table">
+    <div class="row dealerRow">
+      <div id="dealer" class="cards"></div>
+      <div id="dealerScore" class="score">0</div>
+    </div>
+    <div class="row playerRow">
+      <div id="player" class="cards"></div>
+      <div id="playerScore" class="score">0</div>
+    </div>
+  </div>
+
+<!-- Controls -->
+<div class="controls">
+  Bet:
+  <input type="number" id="bet" value="50" min="1" />
+  <button id="deal" class="primary">Deal</button>
+  <button id="hit" disabled>Hit</button>
+  <button id="stand" disabled>Stand</button>
+  <button id="double" disabled>Double Down</button>
+</div>
+
+<!-- Congratulation popup -->
+<div id="gg" class="toast">
+  <h2>You reached 1000!</h2>
+  <div>You now have enough rocks to charge your time machine to the next arena. <br>Ancient Egypt - Coming Soon!!!</br></div>
+  <div style="margin-top:10px">
+    <button onclick="window.location.href='campaign.html'" class="primary">Return to Menu</button>
+  </div>
+</div>
+
+<!-- Intro toast shown on page open -->
+<div id="intro" class="toast">
+  <h2>Welcome to the Caveman Arena - The Birth of Chance</h2>
+  <div>
+    You are the first person to build a time machine. But unfortunately, a derailed experiment has catapulted you into
+    the stone age. <br>
+    Luckily, your time machine doesn't require any power and is fully sustainable with resources! But <b>beware</b> of some unpredicted twists of the past.</b><br>
+    The only you think you need is 1000 rocks to charge up your time machine and put yourself further ahead in time. <br>
+    <br>
+    The local tribe is willing to wager rocks, but they only gamble in one game: <b>Blackjack</b>. <br>
+    Beat the dealer to 21 without busting. You can <b>Hit</b>, <b>Stand</b>, and <b>Double Down</b>. <br>
+    <br>
+    <b>Caveman Twists</b><br>
+    🗿 Wild Totem — the first <b>2</b> you draw can count as <b>11</b> once per hand.<br>
+    🦖 Predator Attack — 1% chance of a predator attack - all cards are redealt.
+  </div>
+  <div style="margin-top:10px">
+    <button id="introClose" class="primary">Start</button>
+  </div>
+</div>
+
+  <audio id="bgm" loop>
+    <source src="caves.mp3" type="audio/mpeg">
+  </audio>
+
+  <audio id="uiClick" src="ui-click.mp3" preload="auto"></audio>
+
+  <script>
+    let bgmStarted = false;
+
+    function startBgmFadeIn() {
+      const bgm = document.getElementById("bgm");
+      if (!bgm || bgmStarted) return;
+      bgmStarted = true;
+      bgm.volume = 0; // start muted
+
+      bgm.play().then(() => {
+        let volume = 0;
+        const fade = setInterval(() => {
+          if (volume < 0.3) {   // fade to 30%
+            volume += 0.01;
+            bgm.volume = volume;
+          } else {
+            clearInterval(fade);
+          }
+        }, 200);
+      }).catch(err => {
+        console.log("Autoplay prevented until user clicks:", err);
+      });
+    }
+
+    // Trigger fade-in when the user first clicks Deal
+    const dealBtn = document.getElementById("deal");
+    if (dealBtn) {
+      dealBtn.addEventListener("click", startBgmFadeIn, { once: true });
+    }
+
+  (() => {
+  const audioEl = document.getElementById('uiClick');
+  if (!audioEl) return console.warn('uiClick audio tag not found');
+
+  // --- Config ---
+  const DEFAULT_VOL = 0.35;
+  const SELECTOR = `
+    button,
+    .btn,
+    [role="button"],
+    a,
+    .tile,          /* your big image tiles */
+    .backBtn,       /* your back-to-menu pill */
+    [data-sound]    /* force sound on any element by adding this attribute */
+  `;
+
+  // Prime audio on first gesture (helps some browsers)
+  window.addEventListener('pointerdown', armOnce, { once: true, passive: true });
+  function armOnce() {
+    try {
+      audioEl.volume = DEFAULT_VOL;
+      audioEl.play().then(() => { audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{});
+    } catch {}
+  }
+
+  // Play helper — clone so overlapping clicks don’t cut off
+  function playClick() {
+    try {
+      const clone = audioEl.cloneNode(true);
+      clone.volume = audioEl.volume || DEFAULT_VOL;
+      document.body.appendChild(clone);
+      // Start on next frame to ensure DOM append is recognized (Safari quirk)
+      requestAnimationFrame(() => {
+        clone.play().catch(()=>{}).finally(() => setTimeout(() => clone.remove(), 1500));
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  // Throttle to avoid double sound (pointerdown + click)
+  let lastPlayedAt = 0;
+  function maybePlay() {
+    const now = performance.now();
+    if (now - lastPlayedAt < 120) return; // 120ms window
+    lastPlayedAt = now;
+    playClick();
+  }
+
+  // Find a clickable ancestor that matches our selector
+  function findClickable(target) {
+    return target && target.closest(SELECTOR);
+  }
+
+  // Some elements should be silent
+  function isSilent(el) {
+    return el && el.closest('[data-silent="true"]');
+  }
+
+  // Play on pointerdown (fires before navigation)
+  document.addEventListener('pointerdown', (e) => {
+    const el = findClickable(e.target);
+    if (!el || isSilent(el)) return;
+    maybePlay();
+  }, { passive: true });
+
+  // Keyboard activation (Enter/Space) for accessibility
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (findClickable(el) && !isSilent(el)) maybePlay();
+  });
+
+  // Optional: expose a global to tweak volume later (Options modal)
+  window.UIClickSfx = {
+    setVolume(v){ audioEl.volume = Math.min(Math.max(+v || 0, 0), 1); },
+    getVolume(){ return audioEl.volume ?? DEFAULT_VOL; },
+    test(){ playClick(); }
+  };
+})();
+  </script>
+</body>
+</html>

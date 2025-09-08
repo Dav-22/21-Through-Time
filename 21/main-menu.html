@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Main Menu</title>
+<link rel="icon" type="image/x-icon" href="images/logo.png">
+<link rel="preload" href="ui-click.mp3" as="audio">
+<link rel="preload" href="/bgm_main.mp3" as="audio">
+
+<style>
+  :root{
+    --bg:#0b0b0f; --panel:#13161f; --panel-2:#0f1320; --wire:#2a3144;
+    --gold:#e7b34c; --text:#e9ecf4; --muted:#a8b0c2; --edge:rgba(255,255,255,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--text);
+    background:
+      radial-gradient(1200px 800px at 70% -10%, #1b1f2f, #0a0b10) no-repeat fixed,
+      var(--bg);
+    font:500 16px/1.35 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto;
+  }
+
+  /* top bar */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 22px;
+  }
+  .logo{
+    display:flex; gap:12px; align-items:center;
+  }
+  .logoMark{
+    width:46px; height:46px; border-radius:10px;
+    background:conic-gradient(from 0deg,#ffd87a,#f6b94e,#a07b2f,#ffd87a);
+    position:relative; box-shadow:0 10px 28px rgba(231,179,76,.25);
+  }
+  .logoMark:after{
+    content:"21"; position:absolute; inset:0; display:grid; place-items:center;
+    color:#0b0b0f; font-weight:900; font-size:20px;
+  }
+  .logoTitle{
+    font-weight:900; letter-spacing:.4px; font-size:22px;
+  }
+  .topActions{display:flex; gap:10px; align-items:center}
+  .btn{
+    background:linear-gradient(180deg,#2a3144,#1b2030);
+    border:1px solid #3a425a; color:var(--text);
+    padding:.6rem 1rem; border-radius:12px; cursor:pointer; font-weight:800;
+    transition:transform .15s, box-shadow .15s; letter-spacing:.3px;
+  }
+  .btn:hover{transform:translateY(-1px); box-shadow:0 12px 30px rgba(0,0,0,.35)}
+  .btn.primary{background:linear-gradient(180deg,var(--gold),#c98c22); color:#151515; border-color:#f0ca7b}
+
+  /* menu layout */
+  .wrap{max-width:1200px; margin:0 auto; padding:10px 22px 40px}
+  .hero{
+    text-align:center; margin:10px 0 26px;
+  }
+  .tag{color:var(--muted); font-size:14px; letter-spacing:.2px}
+  .grid{
+    display:grid; gap:18px;
+    grid-template-columns:repeat(2, minmax(0,1fr));
+  }
+  .tile{
+    position:relative; isolation:isolate; border-radius:18px; overflow:hidden;
+    min-height:320px; /* big buttons */
+    border:1px solid #23304a;
+    background:#0e1320;
+    cursor:pointer;
+    outline:none;
+  }
+  /* Placeholder images — replace URLs below */
+  .tile.campaign{ 
+    background-image:url('images/campaign.png'); 
+    background-size:cover; background-position:center;
+  }
+  .tile.freeplay{
+    background-image:url('images/mp.png');
+    background-size:cover; background-position:center;
+  }
+  .tile::after{
+    content:""; position:absolute; inset:0;
+    background:linear-gradient(180deg, rgba(0,0,0,.15), rgba(0,0,0,.55));
+    z-index:0;
+  }
+  .tileContent{
+    position:absolute; inset:0; z-index:1;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    padding:18px;
+  }
+  .tileTitle{font-size:28px; font-weight:900}
+  .tileSub{color:#d6dced; opacity:.9; font-size:14px; margin-top:4px}
+  .tile .cta{
+    margin-top:12px; align-self:flex-start;
+    background:linear-gradient(180deg,var(--gold),#c98c22);
+    border:1px solid #f0ca7b; color:#1c1408; border-radius:10px;
+    padding:.5rem .9rem; font-weight:900; letter-spacing:.4px;
+  }
+  .tile:hover .cta{transform:translateY(-1px)}
+  .tile:focus-visible{box-shadow:0 0 0 3px #7aa2ff55}
+
+  /* footer blurb */
+  .footer{
+    margin-top:22px; color:var(--muted); text-align:center; font-size:13px;
+  }
+
+  /* Options modal (non-functional sliders) */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; z-index:50}
+  .modal{
+    position:fixed; left:50%; top:50%; transform:translate(-50%,-50%);
+    width:min(680px,92vw); background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--edge); border-radius:16px; padding:16px; z-index:60;
+    display:none; box-shadow:0 30px 70px rgba(0,0,0,.55);
+  }
+  .modal h3{margin:4px 0 10px}
+  .rowOpt{display:grid; grid-template-columns:160px 1fr auto; gap:10px; align-items:center; margin:8px 0}
+  .rowOpt .label{color:#dfe6f5}
+  .rowOpt input[type=range]{width:100%}
+  .modalFooter{display:flex; justify-content:flex-end; gap:10px; margin-top:10px}
+  .muted{color:var(--muted)}
+  @media (max-width:840px){
+    .grid{grid-template-columns:1fr}
+    .tile{min-height:260px}
+  }
+
+  .logoImg {
+  height: 60px;   /* adjust as needed */
+  width: auto;
+  object-fit: contain;
+}
+
+  .tile.locked {
+    filter: grayscale(0.8) brightness(0.6);
+    cursor: not-allowed;
+    position: relative;
+  }
+  .tile.locked .cta {
+    display: none; /* hide Enter button */
+  }
+  .tile.locked .lockOverlay {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 48px;
+    color: #fff;
+    text-shadow: 0 0 6px rgba(0,0,0,0.7);
+    z-index: 2;
+  }
+
+  .menuOptions {
+    margin-top: 24px;
+    text-align: center;
+  }
+  .menuOptions .btn {
+    padding: .7rem 1.4rem;
+    font-size: 18px;
+    border-radius: 12px;
+  }
+
+  .backBtn {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0,0,0,.55);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 14px;
+      padding: 8px 12px;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      z-index: 9999;   /* ✅ ensures it stays on top */
+      }
+      
+  .backBtn img {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
+    }
+
+  .backBtn:hover {
+    background: rgba(0,0,0,.75);
+    }
+
+  .tile.campaign .tileTitle .tile.campaign .tileSub {
+    color: #ffd98a; /* warm gold that pops on dark backgrounds */
+  }
+
+  .tile.campaign:hover .tileTitle {
+    color: #fff6d0;
+  }
+
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo">
+        <img src="images/logo.png" alt="21 Through Time Logo" class="logoImg" />
+        <div class="logoTitle">21 Through Time</div>
+    </div>
+
+    <a href="index.html" class="backBtn">
+      <img src="images/back-icon.png" alt="Menu" />
+      Back to Menu
+    </a>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div class="tag">Choose a mode</div>
+    </section>
+
+    <!-- Big image buttons -->
+    <section class="grid">
+      <a href="campaign.html" class="tile campaign" aria-label="Campaign">
+        <div class="tileContent">
+          <div class="tileTitle">Campaign</div>
+          <div class="tileSub">Travel eras, unlock arenas, chase the Timeless Deck.</div>
+          <div class="cta">Enter</div>
+        </div>
+      </a>
+
+      <div class="tile freeplay locked" aria-label="Free Play (Locked)">
+        <div class="tileContent">
+          <div class="tileTitle">Free Play</div>
+          <div class="tileSub">Locked — unlock by progressing in Campaign.</div>
+          <div class="lockOverlay">🔒</div>
+        </div>
+      </div>
+    </section>
+
+    <div class="menuOptions">
+      <button id="btnOptions" type="button" class="btn">Options</button>
+    </div>
+  </main>
+
+  <!-- OPTIONS MODAL (non-functional settings) -->
+  <div id="optOverlay" class="overlay"></div>
+  <div id="optModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="optTitle">
+    <h3 id="optTitle">Options</h3>
+    <div class="rowOpt">
+      <div class="label">Master Volume</div>
+      <input type="range" min="0" max="100" value="70">
+    </div>
+    <div class="rowOpt">
+      <div class="label">Music</div>
+      <input type="range" min="0" max="100" value="60">
+    </div>
+    <div class="rowOpt">
+      <div class="label">SFX</div>
+      <input type="range" min="0" max="100" value="80">
+    </div>
+    <div class="rowOpt">
+      <div class="label">Graphics</div>
+      <select>
+        <option>High</option>
+        <option>Medium</option>
+        <option>Low</option>
+      </select>
+      <span class="muted">preview only</span>
+    </div>
+    <div class="rowOpt">
+      <div class="label">Vibration</div>
+      <label><input type="checkbox" checked> Enable</label>
+      <span class="muted">mobile</span>
+    </div>
+    <div class="modalFooter">
+      <button id="optClose" class="btn">Close</button>
+      <button id="optApply" class="btn primary">Apply</button>
+    </div>
+    <div class="muted" style="margin-top:6px">These controls are placeholders for now.</div>
+  </div>
+
+  <audio id="uiClick" src="ui-click.mp3" preload="auto"></audio>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+    const overlay  = document.getElementById('optOverlay');
+    const modal    = document.getElementById('optModal');
+    const openBtn  = document.getElementById('btnOptions');
+    const closeBtn = document.getElementById('optClose');
+    const applyBtn = document.getElementById('optApply');
+
+    if (!openBtn || !modal || !overlay) {
+      console.warn('Options UI not found — check IDs.');
+      return;
+    }
+
+    function openOptions(){
+      overlay.style.display = 'block';
+      modal.style.display   = 'block';
+      // bring above everything
+      overlay.style.zIndex = '10000';
+      modal.style.zIndex   = '10001';
+    }
+    function closeOptions(){
+      overlay.style.display = 'none';
+      modal.style.display   = 'none';
+    }
+
+    openBtn.addEventListener('click', openOptions);
+    closeBtn?.addEventListener('click', closeOptions);
+    applyBtn?.addEventListener('click', closeOptions);
+    overlay.addEventListener('click', (e)=>{ if(e.target===overlay) closeOptions(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') closeOptions(); });
+  });
+
+  (() => {
+  const audioEl = document.getElementById('uiClick');
+  if (!audioEl) return console.warn('uiClick audio tag not found');
+
+  // --- Config ---
+  const DEFAULT_VOL = 0.35;
+  const SELECTOR = `
+    button,
+    .btn,
+    [role="button"],
+    a,
+    .tile,          /* your big image tiles */
+    .backBtn,       /* your back-to-menu pill */
+    [data-sound]    /* force sound on any element by adding this attribute */
+  `;
+
+  // Prime audio on first gesture (helps some browsers)
+  window.addEventListener('pointerdown', armOnce, { once: true, passive: true });
+  function armOnce() {
+    try {
+      audioEl.volume = DEFAULT_VOL;
+      audioEl.play().then(() => { audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{});
+    } catch {}
+  }
+
+  // Play helper — clone so overlapping clicks don’t cut off
+  function playClick() {
+    try {
+      const clone = audioEl.cloneNode(true);
+      clone.volume = audioEl.volume || DEFAULT_VOL;
+      document.body.appendChild(clone);
+      // Start on next frame to ensure DOM append is recognized (Safari quirk)
+      requestAnimationFrame(() => {
+        clone.play().catch(()=>{}).finally(() => setTimeout(() => clone.remove(), 1500));
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  // Throttle to avoid double sound (pointerdown + click)
+  let lastPlayedAt = 0;
+  function maybePlay() {
+    const now = performance.now();
+    if (now - lastPlayedAt < 120) return; // 120ms window
+    lastPlayedAt = now;
+    playClick();
+  }
+
+  // Find a clickable ancestor that matches our selector
+  function findClickable(target) {
+    return target && target.closest(SELECTOR);
+  }
+
+  // Some elements should be silent
+  function isSilent(el) {
+    return el && el.closest('[data-silent="true"]');
+  }
+
+  // Play on pointerdown (fires before navigation)
+  document.addEventListener('pointerdown', (e) => {
+    const el = findClickable(e.target);
+    if (!el || isSilent(el)) return;
+    maybePlay();
+  }, { passive: true });
+
+  // Keyboard activation (Enter/Space) for accessibility
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (findClickable(el) && !isSilent(el)) maybePlay();
+  });
+
+  // Optional: expose a global to tweak volume later (Options modal)
+  window.UIClickSfx = {
+    setVolume(v){ audioEl.volume = Math.min(Math.max(+v || 0, 0), 1); },
+    getVolume(){ return audioEl.volume ?? DEFAULT_VOL; },
+    test(){ playClick(); }
+  };
+})();
+
+(function(){
+  const SRC         = "bgm_main.mp3";        // <-- your file
+  const KEY_POS     = "bgm_pos_v1";          // last playback time
+  const KEY_VOL     = "bgm_vol_v1";          // saved volume (0..1)
+  const KEY_ENABLED = "bgm_enabled_v1";      // future-proof toggle (not used yet)
+
+  // Create <audio> dynamically so we don't need an element in HTML
+  const bgm = new Audio(SRC);
+  bgm.loop = true;
+  bgm.preload = "auto";
+
+  // Restore saved volume or default to 0.25
+  let targetVol = Math.min(Math.max(parseFloat(localStorage.getItem(KEY_VOL) || "0.25"), 0), 1);
+  bgm.volume = 0; // we’ll fade to targetVol after first gesture
+
+  // Restore position (after metadata so duration is known)
+  const savedPos = parseFloat(localStorage.getItem(KEY_POS) || "0");
+  if (!isNaN(savedPos) && savedPos >= 0) {
+    const seekWhenReady = () => {
+      // small skip forward (0.2s) to avoid hearing a tiny repeat on page change
+      let resumeTime = savedPos + 0.2;
+      // clamp if duration is known
+      if (Number.isFinite(bgm.duration) && bgm.duration > 0) {
+        resumeTime = resumeTime % bgm.duration;
+      }
+      bgm.currentTime = resumeTime;
+    };
+    if (bgm.readyState >= 1) seekWhenReady();
+    else bgm.addEventListener("loadedmetadata", seekWhenReady, { once:true });
+  }
+
+  // Save position periodically (+ on pagehide)
+  let saveTimer = setInterval(() => {
+    try { localStorage.setItem(KEY_POS, String(bgm.currentTime || 0)); } catch(e){}
+  }, 1000);
+  const saveNow = () => {
+    try { localStorage.setItem(KEY_POS, String(bgm.currentTime || 0)); } catch(e){}
+  };
+  window.addEventListener("pagehide", saveNow);
+
+  // Fade-in after first user gesture (satisfies autoplay policies)
+  let started = false;
+  function startBgmFadeIn(){
+    if (started) return;
+    started = true;
+    bgm.play().then(() => {
+      let v = 0;
+      const step = 0.02;    // fade speed
+      const tick = 120;     // ms per step
+      const id = setInterval(()=>{
+        v += step;
+        bgm.volume = (v >= targetVol) ? (clearInterval(id), targetVol) : v;
+      }, tick);
+    }).catch(err => {
+      // If blocked, user will need another gesture; no-op
+      console.log("BGM play blocked until user interacts:", err);
+      started = false;
+    });
+  }
+
+  // “Gesture” listeners (any of these will start the music once)
+  const armOnce = { once:true, passive:true, capture:true };
+  window.addEventListener("pointerdown", startBgmFadeIn, armOnce);
+  window.addEventListener("keydown",      startBgmFadeIn, armOnce);
+
+  // Optional helpers you can use from Options UI later
+  window.BGM = {
+    setVolume(v){ 
+      targetVol = Math.min(Math.max(+v || 0, 0), 1);
+      localStorage.setItem(KEY_VOL, String(targetVol));
+      // live-adjust if already playing
+      if (started) bgm.volume = targetVol;
+    },
+    getVolume(){ return targetVol; },
+    test(){ startBgmFadeIn(); } // force-start if you need to
+  };
+
+  // Clean up if needed (not strictly required)
+  window.addEventListener("beforeunload", () => {
+    clearInterval(saveTimer);
+    saveNow();
+  });
+})();
+  </script>
+</body>
+</html>

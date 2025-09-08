@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Campaign</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preload" href="ui-click.mp3" as="audio">
+  <script src="script.js" defer></script>
+  <link rel="icon" type="image/x-icon" href="images/logo.png">
+  <link rel="preload" href="/bgm_main.mp3" as="audio">
+
+</head>
+<body class="campaign-screen">
+  <h1>Campaign Progression</h1>
+
+  <a href="main-menu.html" class="backBtn">
+    <img src="images/back-icon.png" alt="Menu" />
+    Back to Menu
+</a>
+
+  <div id="campaign-grid">
+    <div class="arena-node">
+      <button class="arena-button" id="cavemanBtn" style="background-image:url('images/caveman.png')" onclick="enterArena('caveman')">
+        Caveman
+      </button>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="egyptBtn" style="background-image:url('images/egypt.png')" disabled>
+        Ancient Egypt
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="tavernBtn" style="background-image:url('images/tavern.png')" disabled>
+        Medieval Tavern
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="saloonBtn" style="background-image:url('images/saloon.png')" disabled>
+        Wild West
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="pirateBtn" style="background-image:url('images/pirate.png')" disabled>
+        Pirate Ship
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="casinoBtn" style="background-image:url('images/casino.png')" disabled>
+        Casino
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+
+    <div class="arena-node locked">
+      <button class="arena-button" id="cyberpunkBtn" style="background-image:url('images/cyberpunk.png')" disabled>
+        Cyberpunk
+      </button>
+      <div class="lock-icon">🔒</div>
+    </div>
+  </div>
+
+  <audio id="uiClick" src="ui-click.mp3" preload="auto"></audio>
+
+  <script>
+(() => {
+  const audioEl = document.getElementById('uiClick');
+  if (!audioEl) return console.warn('uiClick audio tag not found');
+
+  // --- Config ---
+  const DEFAULT_VOL = 0.35;
+  const SELECTOR = `
+    button,
+    .btn,
+    [role="button"],
+    a,
+    .tile,          /* your big image tiles */
+    .backBtn,       /* your back-to-menu pill */
+    [data-sound]    /* force sound on any element by adding this attribute */
+  `;
+
+  // Prime audio on first gesture (helps some browsers)
+  window.addEventListener('pointerdown', armOnce, { once: true, passive: true });
+  function armOnce() {
+    try {
+      audioEl.volume = DEFAULT_VOL;
+      audioEl.play().then(() => { audioEl.pause(); audioEl.currentTime = 0; }).catch(()=>{});
+    } catch {}
+  }
+
+  // Play helper — clone so overlapping clicks don’t cut off
+  function playClick() {
+    try {
+      const clone = audioEl.cloneNode(true);
+      clone.volume = audioEl.volume || DEFAULT_VOL;
+      document.body.appendChild(clone);
+      // Start on next frame to ensure DOM append is recognized (Safari quirk)
+      requestAnimationFrame(() => {
+        clone.play().catch(()=>{}).finally(() => setTimeout(() => clone.remove(), 1500));
+      });
+    } catch (e) { /* ignore */ }
+  }
+
+  // Throttle to avoid double sound (pointerdown + click)
+  let lastPlayedAt = 0;
+  function maybePlay() {
+    const now = performance.now();
+    if (now - lastPlayedAt < 120) return; // 120ms window
+    lastPlayedAt = now;
+    playClick();
+  }
+
+  // Find a clickable ancestor that matches our selector
+  function findClickable(target) {
+    return target && target.closest(SELECTOR);
+  }
+
+  // Some elements should be silent
+  function isSilent(el) {
+    return el && el.closest('[data-silent="true"]');
+  }
+
+  // Play on pointerdown (fires before navigation)
+  document.addEventListener('pointerdown', (e) => {
+    const el = findClickable(e.target);
+    if (!el || isSilent(el)) return;
+    maybePlay();
+  }, { passive: true });
+
+  // Keyboard activation (Enter/Space) for accessibility
+  document.addEventListener('keydown', (e) => {
+    if (e.repeat) return;
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const el = document.activeElement;
+    if (!el) return;
+    if (findClickable(el) && !isSilent(el)) maybePlay();
+  });
+
+  // Optional: expose a global to tweak volume later (Options modal)
+  window.UIClickSfx = {
+    setVolume(v){ audioEl.volume = Math.min(Math.max(+v || 0, 0), 1); },
+    getVolume(){ return audioEl.volume ?? DEFAULT_VOL; },
+    test(){ playClick(); }
+  };
+})();
+
+(function(){
+  const SRC         = "bgm_main.mp3";        // <-- your file
+  const KEY_POS     = "bgm_pos_v1";          // last playback time
+  const KEY_VOL     = "bgm_vol_v1";          // saved volume (0..1)
+  const KEY_ENABLED = "bgm_enabled_v1";      // future-proof toggle (not used yet)
+
+  // Create <audio> dynamically so we don't need an element in HTML
+  const bgm = new Audio(SRC);
+  bgm.loop = true;
+  bgm.preload = "auto";
+
+  // Restore saved volume or default to 0.25
+  let targetVol = Math.min(Math.max(parseFloat(localStorage.getItem(KEY_VOL) || "0.25"), 0), 1);
+  bgm.volume = 0; // we’ll fade to targetVol after first gesture
+
+  // Restore position (after metadata so duration is known)
+  const savedPos = parseFloat(localStorage.getItem(KEY_POS) || "0");
+  if (!isNaN(savedPos) && savedPos >= 0) {
+    const seekWhenReady = () => {
+      // small skip forward (0.2s) to avoid hearing a tiny repeat on page change
+      let resumeTime = savedPos + 0.2;
+      // clamp if duration is known
+      if (Number.isFinite(bgm.duration) && bgm.duration > 0) {
+        resumeTime = resumeTime % bgm.duration;
+      }
+      bgm.currentTime = resumeTime;
+    };
+    if (bgm.readyState >= 1) seekWhenReady();
+    else bgm.addEventListener("loadedmetadata", seekWhenReady, { once:true });
+  }
+
+  // Save position periodically (+ on pagehide)
+  let saveTimer = setInterval(() => {
+    try { localStorage.setItem(KEY_POS, String(bgm.currentTime || 0)); } catch(e){}
+  }, 1000);
+  const saveNow = () => {
+    try { localStorage.setItem(KEY_POS, String(bgm.currentTime || 0)); } catch(e){}
+  };
+  window.addEventListener("pagehide", saveNow);
+
+  // Fade-in after first user gesture (satisfies autoplay policies)
+  let started = false;
+  function startBgmFadeIn(){
+    if (started) return;
+    started = true;
+    bgm.play().then(() => {
+      let v = 0;
+      const step = 0.02;    // fade speed
+      const tick = 120;     // ms per step
+      const id = setInterval(()=>{
+        v += step;
+        bgm.volume = (v >= targetVol) ? (clearInterval(id), targetVol) : v;
+      }, tick);
+    }).catch(err => {
+      // If blocked, user will need another gesture; no-op
+      console.log("BGM play blocked until user interacts:", err);
+      started = false;
+    });
+  }
+
+  // “Gesture” listeners (any of these will start the music once)
+  const armOnce = { once:true, passive:true, capture:true };
+  window.addEventListener("pointerdown", startBgmFadeIn, armOnce);
+  window.addEventListener("keydown",      startBgmFadeIn, armOnce);
+
+  // Optional helpers you can use from Options UI later
+  window.BGM = {
+    setVolume(v){ 
+      targetVol = Math.min(Math.max(+v || 0, 0), 1);
+      localStorage.setItem(KEY_VOL, String(targetVol));
+      // live-adjust if already playing
+      if (started) bgm.volume = targetVol;
+    },
+    getVolume(){ return targetVol; },
+    test(){ startBgmFadeIn(); } // force-start if you need to
+  };
+
+  // Clean up if needed (not strictly required)
+  window.addEventListener("beforeunload", () => {
+    clearInterval(saveTimer);
+    saveNow();
+  });
+})();
+  </script>
+</body>
+</html>
